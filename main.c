@@ -59,8 +59,23 @@ uint8_t hour;
 uint8_t min;
 uint8_t sec;
 uint16_t maxDate = 0;
-uint16_t minDate = 65000;
+uint16_t minDate = 0;
+uint16_t maxDateTemp = 0;
+uint16_t minDateTemp = 65000;
+uint16_t acceSumLast = 0;
 
+uint8_t regetMinFlag = 0;
+uint8_t becomeBigCnt = 0;
+uint8_t regetMaxFlag = 1;;
+uint8_t becomeSmallCnt = 0;
+uint16_t averValue = 0;
+
+uint16_t belowAverCnt = 0;
+uint16_t aboveAverCnt = 0;
+
+uint8_t downFlag = 0;
+uint8_t upFlag = 0;
+uint32_t step = 0;
 
 /****************************************/
 void InitPit()
@@ -83,6 +98,17 @@ void writeSD(void)
 	dateSend[5] = acceY >> 8;
 	dateSend[6] = acceZ;
 	dateSend[7] = acceZ >> 8;
+	dateSend[8] = maxDate;
+	dateSend[9] = maxDate >> 8;
+	dateSend[10] = minDate;
+	dateSend[11] = minDate >> 8;
+	dateSend[12] = averValue;
+	dateSend[13] = averValue >> 8;
+	dateSend[14] = aboveAverCnt;
+	dateSend[15] = aboveAverCnt >> 8;
+	dateSend[16] = belowAverCnt;
+	dateSend[17] = belowAverCnt >> 8;
+	dateSend[18] = step;
 	while(SD_WriteSingleBlock(time,dateSend) != ESDHC_OK);
 }
 /**************************************/
@@ -104,6 +130,28 @@ void readSD(void)
 	acceZ = dateSend[7];
 	acceZ <<= 8;
 	acceZ |= (uint16_t)dateSend[6];
+	
+	maxDate = dateSend[9];
+	maxDate <<= 8;
+	maxDate |= (uint16_t)dateSend[8];
+	
+	minDate = dateSend[11];
+	minDate <<= 8;
+	minDate |= (uint16_t)dateSend[10];
+	
+	averValue = dateSend[13];
+	averValue <<= 8;
+	averValue |= (uint16_t)dateSend[12];
+	
+	aboveAverCnt = dateSend[15];
+	aboveAverCnt <<= 8;
+	aboveAverCnt |= (uint16_t)dateSend[14];
+	
+	belowAverCnt = dateSend[17];
+	belowAverCnt <<= 8;
+	belowAverCnt |= (uint16_t)dateSend[16];
+	
+	step = dateSend[18];
 }
 /****************************************/
 float mySqrt(unsigned long x)
@@ -140,6 +188,7 @@ void Data_Calculate(void)
 			acceX = acceXLast * 0.2 + acceX * 0.8;
 			acceY = acceYLast * 0.2 + acceY * 0.8;
 			acceZ = acceZLast * 0.2 + acceZ * 0.8;
+			acceSumLast = acceSum;
 			acceSum = (acceX * acceX + acceY * acceY + acceZ * acceZ) / 10000;
 	}
 }
@@ -179,12 +228,123 @@ void GetTime(void)
 /*******************************/
 void judge()
 {
-	if(time % 1000 == 0)
+//	if(time % 1000 == 0)
+//	{
+//		maxDate = 0;
+//		minDate = 65000;
+//	}
+	if(regetMinFlag == 1)
 	{
-		maxDate = 0;
-		minDate = 65000;
+		if(acceSum < minDateTemp)//更新最小值
+		{
+			minDateTemp = acceSum;
+		}
+		
+		if(acceSum > acceSumLast)//连续十场变大 则不记录最小值 
+		{
+			becomeBigCnt++;
+		}
+		else
+		{
+			becomeBigCnt = 0;
+		}
+		
+		if(becomeBigCnt >= 10)
+		{
+			minDate = minDateTemp;//储存最小值
+			regetMinFlag = 0;
+			regetMaxFlag = 1;//开始记录最大值
+			maxDateTemp = 0;//清零
+			
+			
+		}
 	}
-	if(acceSum > )
+	
+	if(regetMaxFlag == 1)
+	{
+		if(acceSum > maxDateTemp)
+			maxDateTemp = acceSum;
+		
+		if(acceSum < acceSumLast)
+		{
+			becomeSmallCnt++;
+		}
+		else
+		{
+			becomeSmallCnt = 0;
+		}
+		
+		if(becomeSmallCnt >= 10)
+		{
+			maxDate = maxDateTemp;
+			regetMinFlag = 1;//开始记录最小值
+			regetMaxFlag = 0;
+			minDateTemp = 65000;
+		}
+	}
+	
+	
+	if(maxDate - minDate > 1400)
+		averValue = (maxDate + minDate) >> 1;
+	
+	if(acceSum >= averValue)
+	{
+		if(belowAverCnt > 30)
+		{
+			if(upFlag == 0)//开始判断上升
+				upFlag = 1;
+			if(aboveAverCnt < 0xffff)
+				aboveAverCnt++;
+			if(aboveAverCnt > 30)
+			{
+				step++;
+				aboveAverCnt = 0;
+				belowAverCnt = 0;
+			}
+		}
+		else
+		{
+			belowAverCnt = 0;
+			if(aboveAverCnt < 0xffff)
+				aboveAverCnt++;
+		}
+		
+		if(downFlag == 1)//如果低于阈值后又大于 清零重新判断
+		{
+			belowAverCnt = 0;
+			downFlag = 0;
+		}
+			
+	}
+	else
+	{
+		if(aboveAverCnt > 30)
+		{
+			if(downFlag == 0)
+				downFlag = 1;//开始判断
+			if(belowAverCnt < 0xffff)
+				belowAverCnt++;
+			if(belowAverCnt > 30)
+			{
+				step++;
+				aboveAverCnt = 0;
+				belowAverCnt = 0;
+			}
+		}
+		else
+		{
+			aboveAverCnt = 0;
+			if(belowAverCnt < 0xffff)
+				belowAverCnt++;
+		}
+		
+		if(upFlag == 1)
+		{
+			upFlag = 0;
+			aboveAverCnt = 0;
+		}
+			
+	}
 	
 }
 
@@ -193,7 +353,7 @@ void judge()
 int main(void)
 {
 	
-	//初始化系统时钟 使用外部50M晶振 PLL倍频到200M
+	//初始化系统时钟 使用外部50M晶振 PLL倍频到100M
 	SystemClockSetup(ClockSource_EX50M,CoreClock_100M);
 	OLED_Init();
 	DelayInit();
@@ -203,12 +363,12 @@ int main(void)
 	
 	InitPit();
 	
-	UART_DebugPortInit(UART5_RX_E8_TX_E9,640000);//´®¿Ú·¢ËÍ¶ÁÈ¡Öµ ÓÃÓÚÉÏÎ»»ú´«Êä
+	UART_DebugPortInit(UART5_RX_E8_TX_E9,640000);
 	UART_DebugPortInit(UART0_RX_PA14_TX_PA15,115200);          //初始化上位机串口
 	UART_DebugPortInit(UART3_RX_B10_TX_B11,9600);//用于蓝牙发送数据
 	
-	UART_ITConfig(UART0,UART_IT_RDRF,ENABLE);	//¿ªÆô·¢ËÍÖÐ¶Ï¹¦ÄÜ
-	NVIC_EnableIRQ(UART0_RX_TX_IRQn);	//½ÓÍ¨NVICÉÏ¶ÔÓ¦´®¿ÚÖÐ¶ÏÏß
+	UART_ITConfig(UART0,UART_IT_RDRF,ENABLE);	//配置中断
+	NVIC_EnableIRQ(UART0_RX_TX_IRQn);	//开启串口发送中断
 	
 	//GetTime();//蓝牙获得时间基准值
 	
@@ -225,11 +385,11 @@ int main(void)
 				receOverFlag = 0;
 				time++;
 				Data_Calculate();
+				judge();
 				OLED_Write_Num5(0,0,acceSum);
 				OLED_Write_Num5(0,2,temper);
-				
 				OLED_Write_Num5(0,4,time);
-				
+				OLED_Write_Num5(10,0,step);
 			}
 		}
 		
@@ -245,10 +405,11 @@ int main(void)
 				receOverFlag = 0;
 				time++;
 				Data_Calculate();
+				judge();
 				OLED_Write_Num5(0,2,acceSum);
 				OLED_Write_Num5(0,4,temper);
-				
 				OLED_Write_Num5(0,6,time);
+				OLED_Write_Num5(0,8,step);
 				writeSD();
 			}
 		}
