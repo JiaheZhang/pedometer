@@ -40,7 +40,7 @@ extern Data_Type *Sent_Data;
 uint8_t Pixels[14000];
 uint8_t timeFlag = 0;
 uint16_t k = 5;
-uint32_t time;
+uint32_t time = 0;
 uint16_t whichSet = 0;
 uint8_t buff[11];
 uint8_t buffCnt = 0;
@@ -74,6 +74,13 @@ uint16_t belowAverCnt = 0;
 uint16_t aboveAverCnt = 0;
 
 uint32_t step = 0;
+uint32_t startMoveTime = 0;//开始计步的时间 
+uint8_t startFlag = 0;
+uint8_t stepChangeFlag = 0;
+uint16_t restCnt = 0;//停止走路的时间
+uint8_t restFlag = 1;
+uint32_t allStep = 0;
+uint8_t flashDate[10];
 
 /****************************************/
 void InitPit()
@@ -150,6 +157,30 @@ void readSD(void)
 	belowAverCnt |= (uint16_t)dateSend[16];
 	
 	step = dateSend[18];
+}
+/********************************/
+void writeFlash(void)
+{
+	flashDate[0] = allStep;
+	flashDate[1] = allStep >> 8;
+	flashDate[2] = allStep >> 16;
+	flashDate[3] = allStep >> 24;
+	Flash_erase_sector(230);
+	Flash_write(230,0,4,flashDate);
+	
+}
+/*****************************/
+void readFlash(void)
+{
+	Flash_read(230,0,4,flashDate);
+	
+	allStep = flashDate[3];
+	allStep <<= 8;
+	allStep |= (uint32_t)flashDate[2];
+	allStep <<= 8;
+	allStep |= (uint32_t)flashDate[1];
+	allStep <<= 8;
+	allStep |= (uint32_t)flashDate[0];
 }
 /****************************************/
 float mySqrt(unsigned long x)
@@ -296,6 +327,12 @@ void judge()
 				step++;
 				aboveAverCnt = 0;
 				belowAverCnt = 0;
+				stepChangeFlag = 1;
+				if(startFlag == 0)//record start time
+				{
+					startMoveTime = time;
+					startFlag = 1;
+				}
 			}
 		}
 		else
@@ -317,6 +354,12 @@ void judge()
 				step++;
 				aboveAverCnt = 0;
 				belowAverCnt = 0;
+				stepChangeFlag = 1;
+				if(startFlag == 0)//record start time
+				{
+					startMoveTime = time;
+					startFlag = 1;
+				}
 			}
 		}
 		else
@@ -327,7 +370,45 @@ void judge()
 		}
 			
 	}
+	if(startFlag == 1 && restFlag == 1)
+	{
+		if(step >= 7)
+		{
+			if(time - startMoveTime <= 2000)
+			{
+				restFlag = 0;
+			}
+		}
+		else
+		{
+			if(time - startMoveTime >= 2000)//7 steps
+			{
+				step = 0;
+				startFlag = 0;
+			}
+		}
+	}
 	
+	if(stepChangeFlag == 1)//累计不运功时间
+	{
+		stepChangeFlag = 0;
+		restCnt = 0;
+	}
+	else if(restFlag == 0)
+	{
+		restCnt++;
+	}
+	if(restCnt >= 1500)//储存步数 进入休眠
+	{
+		restCnt = 0;
+		restFlag = 1;
+		startFlag = 0;
+		allStep += step;
+		step = 0;
+		
+		writeFlash();//每次休眠储存步数
+	}
+		
 }
 
 
@@ -356,6 +437,7 @@ int main(void)
 	
 	Menu_Init();
 	Display_All();
+	readFlash();
 
 	if(Mode==0)
 	{
@@ -372,6 +454,7 @@ int main(void)
 				OLED_Write_Num5(0,2,temper);
 				OLED_Write_Num5(0,4,time);
 				OLED_Write_Num5(10,0,step);
+				OLED_Write_Num5(10,2,allStep);
 			}
 		}
 		
@@ -392,6 +475,7 @@ int main(void)
 				OLED_Write_Num5(0,4,temper);
 				OLED_Write_Num5(0,6,time);
 				OLED_Write_Num5(10,0,step);
+				OLED_Write_Num5(10,2,allStep);
 				writeSD();
 			}
 		}
