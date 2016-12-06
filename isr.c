@@ -1,6 +1,5 @@
 #include "isr.h"
 #include "Mydefine.h"
-#include "ftm.h"
 #include "oled.h"
 
 
@@ -42,10 +41,6 @@ __asm void wait()
 void HardFault_Handler(void)//内存或堆栈溢出错误
 {
 	OLED_Clear();
-	FTM_PWM_ChangeDuty(FTM0_CH3_PA6,0);
-	FTM_PWM_ChangeDuty(FTM0_CH4_PA7,0);
-	FTM_PWM_ChangeDuty(FTM1_CH0_PA8,0);
-	FTM_PWM_ChangeDuty(FTM1_CH1_PA9,0);
 	OLED_Write_String(0,0,(uint8_t *)"The memory");
 	
 	OLED_Write_String(0,2,(uint8_t *)"or Stacks");	
@@ -61,10 +56,6 @@ void HardFault_Handler(void)//内存或堆栈溢出错误
 void NMI_Handler(void)//不可屏蔽中断
 {
 	OLED_Clear();
-	FTM_PWM_ChangeDuty(FTM0_CH3_PA6,0);
-	FTM_PWM_ChangeDuty(FTM0_CH4_PA7,0);
-	FTM_PWM_ChangeDuty(FTM1_CH0_PA8,0);
-	FTM_PWM_ChangeDuty(FTM1_CH1_PA9,0);
 
 	OLED_Write_String(0,0,(uint8_t *)"The Chip");
 	
@@ -79,10 +70,6 @@ void NMI_Handler(void)//不可屏蔽中断
 
 void MemManage_Handler(void)//存储发生错误
 {
-	FTM_PWM_ChangeDuty(FTM0_CH3_PA6,0);
-	FTM_PWM_ChangeDuty(FTM0_CH4_PA7,0);
-	FTM_PWM_ChangeDuty(FTM1_CH0_PA8,0);
-	FTM_PWM_ChangeDuty(FTM1_CH1_PA9,0);
 	#if(CHIP_DEBUG==ON)	
 	wait();
 	#endif
@@ -90,10 +77,6 @@ void MemManage_Handler(void)//存储发生错误
 
 void BusFault_Handler(void)//总线发生错误
 {
-	FTM_PWM_ChangeDuty(FTM0_CH3_PA6,0);
-	FTM_PWM_ChangeDuty(FTM0_CH4_PA7,0);
-	FTM_PWM_ChangeDuty(FTM1_CH0_PA8,0);
-	FTM_PWM_ChangeDuty(FTM1_CH1_PA9,0);
 
 	#if(CHIP_DEBUG==ON)	
 	wait();
@@ -102,11 +85,6 @@ void BusFault_Handler(void)//总线发生错误
 
 void UsageFault_Handler(void)//用法发生错误
 {
-	FTM_PWM_ChangeDuty(FTM0_CH3_PA6,0);
-	FTM_PWM_ChangeDuty(FTM0_CH4_PA7,0);
-	FTM_PWM_ChangeDuty(FTM1_CH0_PA8,0);
-	FTM_PWM_ChangeDuty(FTM1_CH1_PA9,0);
-
 
 	#if(CHIP_DEBUG==ON)	
 	wait();

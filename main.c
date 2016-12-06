@@ -32,7 +32,7 @@
 #include "nrf2401.h"
 
 
-uint16_t Mode = 2;
+uint16_t Mode = 0;
 int16_t SDData[2];
 uint8_t Dummy = 0;           //DMA采集除bug
 Data_Type DATA_ALL;
@@ -228,12 +228,7 @@ void GetTime(void)
 {
 	uint8_t temp_i=0;
 	uint8_t a[4]={0};
-	OLED_Write_String(0,0,(uint8_t*)"getting date");
-//	while(1)
-//	if(UART_ReceiveData(UART3,&a[temp_i]))
-//	{
-//		OLED_Write_String(0,2,a);
-//	}
+	OLED_Write_String(0,0,(uint8_t*)"");
 	
 	while(temp_i<=3)
 	{
@@ -407,10 +402,22 @@ void judge()
 		step = 0;
 		
 		writeFlash();//每次休眠储存步数
+		UART_SendData(UART3,allStep);//蓝牙发送数据
 	}
 		
 }
+/*********************************/
+void displayDate(void)
+{
+	OLED_Write_String(0,0,(uint8_t*)"Today's steps is");
+	OLED_Write_String(0,4,(uint8_t*)"Calories burn");
+}
 
+/*********************************************/
+void isReceiveBlueTeeth(void)
+{
+	
+}
 
 /**********************************************/
 int main(void)
@@ -426,22 +433,21 @@ int main(void)
 	
 	InitPit();
 	
-	UART_DebugPortInit(UART5_RX_E8_TX_E9,640000);
-	UART_DebugPortInit(UART0_RX_PA14_TX_PA15,115200);          //初始化上位机串口
+	UART_DebugPortInit(UART5_RX_E8_TX_E9,640000);//上位机
+	UART_DebugPortInit(UART0_RX_PA14_TX_PA15,115200);//串口读取6050数据
 	UART_DebugPortInit(UART3_RX_B10_TX_B11,9600);//用于蓝牙发送数据
 	
 	UART_ITConfig(UART0,UART_IT_RDRF,ENABLE);	//配置中断
 	NVIC_EnableIRQ(UART0_RX_TX_IRQn);	//开启串口发送中断
 	
-	//GetTime();//蓝牙获得时间基准值
-	
-	Menu_Init();
-	Display_All();
+	//Menu_Init();
+	//Display_All();
 	readFlash();
-
-	if(Mode==0)
+	displayDate();
+	
+	if(Mode==0)//默认为mode = 0 其余模式为了调试使用
 	{
-		OLED_Clear();
+		//OLED_Clear();
 		while(1)
 		{
 			if(receOverFlag)
@@ -450,10 +456,7 @@ int main(void)
 				time++;
 				Data_Calculate();
 				judge();
-				OLED_Write_Num5(0,0,acceSum);
-				OLED_Write_Num5(0,2,temper);
-				OLED_Write_Num5(0,4,time);
-				OLED_Write_Num5(10,0,step);
+				OLED_Write_Num5(0,2,step);
 				OLED_Write_Num5(10,2,allStep);
 			}
 		}
