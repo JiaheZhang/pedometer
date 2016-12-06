@@ -73,8 +73,6 @@ uint16_t averValue = 0;
 uint16_t belowAverCnt = 0;
 uint16_t aboveAverCnt = 0;
 
-uint8_t downFlag = 0;
-uint8_t upFlag = 0;
 uint32_t step = 0;
 
 /****************************************/
@@ -199,11 +197,11 @@ void GetTime(void)
 {
 	uint8_t temp_i=0;
 	uint8_t a[4]={0};
-	OLED_Write_String(0,0,(uint8_t*)"getting time...");
+	OLED_Write_String(0,0,(uint8_t*)"getting date");
 //	while(1)
 //	if(UART_ReceiveData(UART3,&a[temp_i]))
 //	{
-//		OLED_Write_String(0,0,a);
+//		OLED_Write_String(0,2,a);
 //	}
 	
 	while(temp_i<=3)
@@ -284,15 +282,13 @@ void judge()
 	}
 	
 	
-	if(maxDate - minDate > 1400)
+	if(maxDate - minDate > 1400 && maxDate - minDate < 8500)
 		averValue = (maxDate + minDate) >> 1;
 	
 	if(acceSum >= averValue)
 	{
 		if(belowAverCnt > 30)
 		{
-			if(upFlag == 0)//开始判断上升
-				upFlag = 1;
 			if(aboveAverCnt < 0xffff)
 				aboveAverCnt++;
 			if(aboveAverCnt > 30)
@@ -308,20 +304,12 @@ void judge()
 			if(aboveAverCnt < 0xffff)
 				aboveAverCnt++;
 		}
-		
-		if(downFlag == 1)//如果低于阈值后又大于 清零重新判断
-		{
-			belowAverCnt = 0;
-			downFlag = 0;
-		}
 			
 	}
 	else
 	{
 		if(aboveAverCnt > 30)
 		{
-			if(downFlag == 0)
-				downFlag = 1;//开始判断
 			if(belowAverCnt < 0xffff)
 				belowAverCnt++;
 			if(belowAverCnt > 30)
@@ -336,12 +324,6 @@ void judge()
 			aboveAverCnt = 0;
 			if(belowAverCnt < 0xffff)
 				belowAverCnt++;
-		}
-		
-		if(upFlag == 1)
-		{
-			upFlag = 0;
-			aboveAverCnt = 0;
 		}
 			
 	}
@@ -409,7 +391,7 @@ int main(void)
 				OLED_Write_Num5(0,2,acceSum);
 				OLED_Write_Num5(0,4,temper);
 				OLED_Write_Num5(0,6,time);
-				OLED_Write_Num5(0,8,step);
+				OLED_Write_Num5(10,0,step);
 				writeSD();
 			}
 		}
