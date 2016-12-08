@@ -81,6 +81,7 @@ uint16_t restCnt = 0;//停止走路的时间
 uint8_t restFlag = 1;
 uint32_t allStep = 0;
 uint8_t flashDate[10];
+char sendStep[8];
 
 /****************************************/
 void InitPit()
@@ -249,6 +250,16 @@ void GetTime(void)
 	OLED_Write_Char(11,1,':');
 	OLED_Write_Num2(12,1,sec);
 }
+/********************************************/
+void myToString(int date)
+{
+	uint8_t cnti;
+	for(cnti = 0;cnti < 8;cnti++)
+	{
+		sendStep[cnti] = date % 10 + '0'; 
+		date /= 10;  
+	}
+}
 /*******************************/
 void judge()
 {
@@ -257,6 +268,7 @@ void judge()
 //		maxDate = 0;
 //		minDate = 65000;
 //	}
+	uint8_t i;
 	if(regetMinFlag == 1)
 	{
 		if(acceSum < minDateTemp)//更新最小值
@@ -402,15 +414,22 @@ void judge()
 		step = 0;
 		
 		writeFlash();//每次休眠储存步数
-		UART_SendData(UART3,allStep);//蓝牙发送数据
+		myToString(allStep);//将步数转化成字符串
+		for(i = 8;i >= 1;i--)
+		{
+			UART_SendData(UART3,sendStep[i - 1]);//蓝牙发送数据
+		}
+		UART_SendData(UART3,'s');//蓝牙发送数据
 	}
-		
+	
+	
+	//UART_SendData(UART3,'l');//蓝牙发送连接标志
 }
 /*********************************/
 void displayDate(void)
 {
 	OLED_Write_String(0,0,(uint8_t*)"Today's steps is");
-	OLED_Write_String(0,4,(uint8_t*)"Calories burn");
+	//OLED_Write_String(0,4,(uint8_t*)"Calories burn");
 }
 
 /*********************************************/

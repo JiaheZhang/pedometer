@@ -81,3 +81,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+Abstract.txt
+*.h
+Mydefine.h~RF463c9a5c.TMP
